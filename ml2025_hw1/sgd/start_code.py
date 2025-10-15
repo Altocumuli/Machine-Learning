@@ -31,15 +31,15 @@ def split_data(X, y, split_size=[0.8, 0.2], shuffle=False, random_seed=None):
     # TODO 2.1.1
     start_idx = 0
     for ratio in split_size:
-        # Calculate the number of samples for this split
+        # 计算当前划分的样本数量
         split_num = int(num_instances * ratio)
         end_idx = start_idx + split_num
         
-        # Handle the last split to include all remaining samples
+        # 处理最后一个划分，确保包含所有剩余样本
         if end_idx > num_instances or ratio == split_size[-1]:
             end_idx = num_instances
         
-        # Split the data
+        # 划分数据
         X_list.append(X[start_idx:end_idx])
         y_list.append(y[start_idx:end_idx])
         
@@ -60,19 +60,19 @@ def feature_normalization(train, test):
 
     """
     # TODO 2.1.2
-    # Calculate min and max for each feature from the training set
+    # 从训练集计算每个特征的最小值和最大值
     train_min = np.min(train, axis=0)
     train_max = np.max(train, axis=0)
     
-    # Avoid division by zero: if max == min, the feature is constant
-    # In this case, we can set the normalized value to 0 or keep it as is
+    # 避免除零错误：如果最大值等于最小值，说明该特征为常数
+    # 此时将范围设为1，保持归一化后的值不变
     range_vals = train_max - train_min
-    range_vals[range_vals == 0] = 1  # Avoid division by zero
+    range_vals[range_vals == 0] = 1  # 避免除零
     
-    # Normalize training set to [0, 1]
+    # 将训练集归一化到 [0, 1]
     train_normalized = (train - train_min) / range_vals
     
-    # Apply the same transformation to test set using training set's min and max
+    # 对测试集使用训练集的最小值和最大值进行相同的变换
     test_normalized = (test - train_min) / range_vals
     
     return train_normalized, test_normalized
@@ -92,6 +92,24 @@ def compute_regularized_square_loss(X, y, theta, lambda_reg):
         loss - 损失函数，标量
     """
     # TODO 2.2.2
+    num_instances = X.shape[0]
+    
+    # 计算预测值
+    predictions = np.dot(X, theta)
+    
+    # 计算残差
+    residuals = predictions - y
+    
+    # 计算平方损失: (1/m) * ||Xθ - y||²
+    square_loss = np.dot(residuals, residuals) / num_instances
+    
+    # 计算正则化项: λ * ||θ||²
+    regularization = lambda_reg * np.dot(theta, theta)
+    
+    # 目标函数 J(θ)
+    loss = square_loss + regularization
+    
+    return loss
 
 
 def compute_regularized_square_loss_gradient(X, y, theta, lambda_reg):
@@ -108,6 +126,18 @@ def compute_regularized_square_loss_gradient(X, y, theta, lambda_reg):
         grad - 梯度向量，数组大小（num_features）
     """
     # TODO 2.2.4
+    num_instances = X.shape[0]
+    
+    # 计算预测值
+    predictions = np.dot(X, theta)
+    
+    # 计算残差
+    residuals = predictions - y
+    
+    # 计算梯度: (2/m) * X^T(Xθ - y) + 2λθ
+    grad = 2 * np.dot(X.T, residuals) / num_instances + 2 * lambda_reg * theta
+    
+    return grad
 
 
 def grad_checker(X, y, theta, lambda_reg, epsilon=0.01, tolerance=1e-4):
