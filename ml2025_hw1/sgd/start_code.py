@@ -190,6 +190,25 @@ def grad_descent(X, y, lambda_reg, alpha=0.1, num_iter=1000, check_gradient=Fals
     loss_hist = np.zeros(num_iter)  # Initialize loss_hist
 
     # TODO 2.3.3
+    for i in range(num_iter):
+        # 计算当前损失
+        loss_hist[i] = compute_regularized_square_loss(X, y, theta, lambda_reg)
+        
+        # 计算梯度
+        grad = compute_regularized_square_loss_gradient(X, y, theta, lambda_reg)
+        
+        # 梯度检查
+        if check_gradient:
+            if not grad_checker(X, y, theta, lambda_reg):
+                print(f"警告：第{i}次迭代梯度检查未通过")
+        
+        # 更新参数：θ := θ - α * ∇J(θ)
+        theta = theta - alpha * grad
+        
+        # 保存参数历史
+        theta_hist[i + 1] = theta
+    
+    return theta_hist, loss_hist
 
 
 def stochastic_grad_descent(
