@@ -271,6 +271,28 @@ def K_fold_split_data(X, y, K=cross_validation_K, shuffle=False, random_seed=Non
     X_valid_list, y_valid_list = [], []
 
     # TODO 2.5.1
+    # 计算每折的大小
+    fold_size = num_instances // K
+    
+    # 对每一折
+    for i in range(K):
+        # 计算当前折的验证集索引范围
+        valid_start = i * fold_size
+        valid_end = (i + 1) * fold_size if i < K - 1 else num_instances
+        
+        # 创建验证集索引
+        valid_indices = list(range(valid_start, valid_end))
+        
+        # 创建训练集索引（除了验证集之外的所有索引）
+        train_indices = list(range(0, valid_start)) + list(range(valid_end, num_instances))
+        
+        # 划分数据
+        X_train_list.append(X[train_indices])
+        y_train_list.append(y[train_indices])
+        X_valid_list.append(X[valid_indices])
+        y_valid_list.append(y[valid_indices])
+    
+    return X_train_list, y_train_list, X_valid_list, y_valid_list
 
 
 def K_fold_cross_validation(
@@ -282,6 +304,7 @@ def K_fold_cross_validation(
     K=cross_validation_K,
     shuffle=False,
     random_seed=None,
+    return_all_results=False,
 ):
     """
     K 折交叉验证
@@ -295,10 +318,16 @@ def K_fold_cross_validation(
         K - 折数
         shuffle - 是否打乱数据集
         random_seed - 随机种子
+        return_all_results - 是否返回所有超参数组合的详细结果
 
     Return：
-        alpha_best - 最佳步长
-        lambda_best - 最佳正则化系数
+        如果 return_all_results=False:
+            alpha_best - 最佳步长
+            lambda_best - 最佳正则化系数
+        如果 return_all_results=True:
+            alpha_best - 最佳步长
+            lambda_best - 最佳正则化系数
+            results - 包含所有超参数组合结果的列表
     """
     alpha_best, lambda_best = None, None
     X_train_list, y_train_list, X_valid_list, y_valid_list = K_fold_split_data(
@@ -306,6 +335,67 @@ def K_fold_cross_validation(
     )
 
     # TODO 2.5.2
+    best_avg_error = float('inf')
+    results = [] if return_all_results else None
+    
+    # 遍历所有超参数组合
+    for alpha in alphas:
+        for lambda_reg in lambdas:
+            # 存储每一折的验证误差
+            fold_errors = []
+            
+            # K折交叉验证
+            for k in range(K):
+                # 获取第k折的训练集和验证集
+                X_train_k = X_train_list[k]
+                y_train_k = y_train_list[k]
+                X_valid_k = X_valid_list[k]
+                y_valid_k = y_valid_list[k]
+                
+                try:
+                    # 在训练集上训练模型
+                    theta_hist, loss_hist = grad_descent(
+                        X_train_k, y_train_k,
+                        lambda_reg=lambda_reg,
+                        alpha=alpha,
+                        num_iter=num_iter,
+                        check_gradient=False
+                    )
+                    
+                    # 获取最终参数
+                    theta_final = theta_hist[-1]
+                    
+                    # 在验证集上计算均方误差（不带正则化项）
+                    predictions = np.dot(X_valid_k, theta_final)
+                    mse = np.mean((predictions - y_valid_k) ** 2)
+                    fold_errors.append(mse)
+                except:
+                    # 如果训练失败（如发散），设置很大的误差
+                    fold_errors.append(float('inf'))
+            
+            # 计算K折的平均验证误差
+            avg_error = np.mean(fold_errors)
+            std_error = np.std(fold_errors)
+            
+            # 如果需要返回详细结果，记录当前组合的结果
+            if return_all_results:
+                results.append({
+                    'eta': alpha,
+                    'lambda': lambda_reg,
+                    'avg_mse': avg_error,
+                    'std_mse': std_error
+                })
+            
+            # 更新最佳超参数
+            if avg_error < best_avg_error:
+                best_avg_error = avg_error
+                alpha_best = alpha
+                lambda_best = lambda_reg
+    
+    if return_all_results:
+        return alpha_best, lambda_best, results
+    else:
+        return alpha_best, lambda_best
 
 
 def analytical_solution(X, y, lambda_reg):
