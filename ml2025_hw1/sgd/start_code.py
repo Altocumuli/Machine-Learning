@@ -239,6 +239,31 @@ def stochastic_grad_descent(
     validation_hist = np.zeros(num_iter)  # Initialize validation_hist
 
     # TODO 2.4.3
+    for i in range(num_iter):
+        # 随机采样batch_size个样本的索引
+        batch_indices = np.random.choice(num_instances, batch_size, replace=False)
+        
+        # 获取小批量数据
+        X_batch = X_train[batch_indices]
+        y_batch = y_train[batch_indices]
+        
+        # 计算小批量上的损失（带正则化）
+        loss_hist[i] = compute_regularized_square_loss(X_batch, y_batch, theta, lambda_reg)
+        
+        # 计算小批量上的梯度
+        grad = compute_regularized_square_loss_gradient(X_batch, y_batch, theta, lambda_reg)
+        
+        # 更新参数：θ := θ - α * ∇J_SGD(θ)
+        theta = theta - alpha * grad
+        
+        # 保存参数历史
+        theta_hist[i + 1] = theta
+        
+        # 在验证集上计算均方误差（不带正则化项）
+        val_predictions = np.dot(X_val, theta)
+        validation_hist[i] = np.mean((val_predictions - y_val) ** 2)
+    
+    return theta_hist, loss_hist, validation_hist
 
 
 cross_validation_K = 5
